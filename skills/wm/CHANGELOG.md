@@ -1,0 +1,168 @@
+# WM Changelog
+
+## v1.0.0 (2026-04-21) — First public release
+
+**Open-source packaging + distribution.** 9 FINs, T2, 15 plan steps across 5 waves. First release to the public GitHub repo at `github.com/claude-workflow-manager/claude-workflow-manager` under MIT. Version reset from internal v2.4 to semver v1.0.0 to signal "first stable public release"; pre-1.0 internal history preserved in the `v2.x` entries below.
+
+**Install paths (FIN-003):**
+- **Plugin (recommended):** `/plugin marketplace add claude-workflow-manager/claude-workflow-manager-marketplace` then `/plugin install workflow-manager`
+- **Git clone (contributors):** `git clone https://github.com/claude-workflow-manager/claude-workflow-manager.git && ./install.sh` (or `install.ps1` on Windows)
+
+**What shipped in this release:**
+- **MIT license** (FIN-005) + standard OSS hygiene files (LICENSE, README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY).
+- **Pre-publish sanitization gate** (FIN-002): `scripts/sanitize.sh` wraps `gitleaks` + custom WM-specific grep sweep for personal paths (`[/\\]Tomasz` pattern catches paths only, not attribution). Wired into `/wm:release` Step 2 — fires on every invocation regardless of publish flag.
+- **Path audit + resolver** (FIN-004): `_wm_root()` + `_wm_rule_path()` resolver in 4 Python hooks, 2 bash hooks, and wm-doc-graph `verbs/_common.py`. Resolves from `WM_ROOT` env var (plugin install) with fallback to `~/.claude/skills/wm` (clone install). 66 plugin-root-relative `@-` references tagged with `<!-- plugin-root-fallback -->` marker across 31 markdown files pending Claude Code's plugin-root token documentation.
+- **Plugin manifest** (FIN-009): `.claude-plugin/plugin.json` with name=`workflow-manager`, version=`1.0.0`, license=`MIT`, author=Tomasz Maciag.
+- **Install scripts** (FIN-008): `install.sh` (bash, macOS/Linux) + `install.ps1` (PowerShell, Windows). Guided per-OS dep checks (brew/apt/dnf/pacman/winget), Python 3.x optional (only needed for `/wm:doc-graph`).
+- **Shared Python dep-check helper** (FIN-008): `skills/wm/lib/check-python.sh` — single source of truth for Python availability + guided install messaging. Sourced by both install scripts and by `/wm:doc-graph` runtime dispatcher. Accepts any Python 3.8+, tries both `python3` and `python` commands.
+- **Shadow-to-customize model** (FIN-007): plugin-installed files are read-only defaults; users override by copying to the same relative path under `~/.claude/`. `/wm:status` gained a "Shadowed files" section with upstream drift detection via mtime + content hash comparison.
+- **Release publish flow** (FIN-006): `/wm:release` gained an ephemeral-staging publish step (temp dir + `git clone public` + `rsync --delete` + `git push public main` + cleanup). **Opt-in via `--publish` flag** — default behavior is internal-only release; public push requires explicit intent (mirrors `npm publish`, `docker push`).
+- **Fresh public repo + marketplace** (FIN-001 + FIN-006): two GitHub repos created under `claude-workflow-manager` org. Dev repo at `d:/Dev/Tools/Workflow-manager` stays private; public repo receives sanitized release snapshots via the publish step.
+
+**Bootstrap note:** the v1.0.0 release itself used the OLD production release workflow (no publish step — that's deployed in this same release). The v1.0.0 public push was conducted manually outside the workflow. From v1.0.1 onward, `/wm:release --publish` handles public push automatically through the ephemeral-staging pattern.
+
+**Deviations logged during execution:**
+- Wave 1 Step 1b subagent hit a content filter on CoC verbatim text; CoC rewritten in main thread with reference-and-link approach.
+- Wave 3 sub-phase split: Step 3a depends on Step 3d's helper existing; not captured in plan metadata. Sub-phase 1 (3d/3c/3b) ran in parallel; sub-phase 2 (3a) ran sequentially.
+- Plan Files field for Step 2a listed `wm_doc_graph/_common.py` but actual path is `wm_doc_graph/verbs/_common.py`. Subagent located the correct file.
+- install.ps1 em-dash parse error (Windows PowerShell 5.1 does not tolerate UTF-8 em-dashes without BOM); replaced with ASCII hyphens.
+- /wm:verify surfaced additional sanitization findings in `AGENTS.md` and `docs/tech-spec-wm-doc-graph.md` — personal paths replaced with user-tilde notation inline.
+- Flag default flipped from opt-out (`--skip-publish`) to opt-in (`--publish`) based on user feedback at release time — "release" shouldn't silently mean "public push".
+
+**Pre-1.0 internal history:** v2.4 and below document the internal development lineage before the public release. See entries below for the sequence of improvements that led to v1.0.0.
+
+## v2.4 (2026-04-20)
+
+**`wm-doc-graph check` default-excludes `archive/` subtrees.** 3 FINs (FIN-001..FIN-003), T1, 7 plan steps. Fix driven by 2026-04-16 ux-designer v3.13 release where `/wm:doc-graph check` (the `/wm:release` Step 3 pre-deploy gate) returned 414 broken references — 412 inside doubly-nested `archive/ux-designer-v3.11/docs/archive/...` snapshots, 2 pre-existing dev-doc issues, zero real regressions. Gate was waived manually; the noise-to-signal ratio trained users to route around the gate rather than honor it.
+
+- **`check` verb filters paths with an `archive/` directory segment** (FIN-001 + FIN-002, `wm_doc_graph/verbs/check.py`): default-excludes any file whose parent directories contain a segment named exactly `archive`, via `PurePosixPath(path).parent.parts` intersection with `DEFAULT_EXCLUDE_SEGMENTS = frozenset({"archive"})`. Path-segment equality (not `fnmatch` glob, not substring) — matches nested archives at any depth, rejects filename substrings like `live-archive.md`. Backward compatibility via new `--include-archives` CLI flag on the `check` subparser. Filter scoped to `check` only: `refs` / `impact` / `outline` / `ls` / `search` retain full graph visibility because those verbs take explicit file arguments where passing an archive path expresses intent to include it.
+- **release.md Step 3 documents the default** (FIN-003, `skills/wm/workflows/release.md`): one paragraph appended to the pre-deploy-gate block explaining that archive subtrees are frozen historical state, pointing at `--include-archives` for the rare case where whole-repo scope is genuinely needed, and explicitly warning against waiving the gate on archive-originating noise.
+- **Three regression tests lock the behavior** (`tests/test_verbs.py`): default-excludes three archive-shaped paths (top-level, `docs/archive/`, doubly-nested); `--include-archives` restores full scope with all three broken refs reported; filename with substring `archive` (`live-archive.md`) is scanned normally and returns a broken-ref failure.
+
+**Live verification on `d:/Dev/Markdown-Agents/agents/ux-designer/`:** `check` dropped from 414 → 2 broken refs (both pre-existing, non-archive). `check --include-archives` restored 676 archive-inclusive refs (archive content grew since 2026-04-16). Backward compat preserved.
+
+**Cross-project note:** orthogonal to `2026-04-20-packaging-distribution` FIN-008 (missing-Python guard for `wm-doc-graph`); both touch `release.md` Step 3 but in additive, non-conflicting paragraphs.
+
+## v2.3 (2026-04-19)
+
+**Discovery-question verbosity fix — communication rule 11 (skim test) + discovery rule 8 shortening.** 6 FINs (FIN-002..FIN-007), T1, 4 plan steps. Rule-hygiene release driven by a recurring failure pattern: agent messages presenting options, trade-offs, or decisions kept landing as walls of text despite existing abstract rules 1/6/7/8. User's own ad-hoc priming phrase ("use plain language and present just enough details, not wall of text") worked reliably as a re-prime but only after the wall had already appeared. Root cause: discovery rule 8's concrete 4-bullet `explain → trade-offs → recommend → ask` structure was the expansion engine, while communication rules 6/7 were too abstract to counterweight. Fix lives at the communication layer so it applies to all agent output, not just `/wm:discover` decision points.
+
+- **New communication rule 11 — skim test before sending** (FIN-005, `rules/communication-rules.md`): `Before sending any message, ask: "Plain language? Just enough for the reader to act, decide, or understand? Or is this a wall of text?" If wall-of-text, cut before sending. This fires on every message, not only decision moments.` Process rule (self-verify before send), distinct in function from the existing outcome rules 6/7/8. Rides the existing `UserPromptSubmit` hook's 5-message injection. Text echoes the three ingredients of the user's empirically-working priming phrase; the explicit "fires on every message" clause preempts narrow-scope misreading. Appended as the final rule — no renumbering of existing rules 1-10.
+- **Discovery rule 8 shortened — drop 4-bullet shape prescription** (FIN-007, `rules/discovery-rules.md`): the `explain → trade-offs → recommend → ask` bullet sequence is removed, replaced by a single-paragraph rule that keeps the substance guidance (`dig into the hard parts`, skip obvious questions, plain language) and the sequence discipline (`brief context before an options list`), and defers message shape to comms rule 11. Removing the 4 bullets eliminates the rules-in-tension window that would otherwise exist during the hook's 5-message injection — rule 11 demanding compact shape while rule 8 prescribed expansion-prone structure.
+- **`AGENTS.md` rule count corrected** (FIN-006): line 18 now reads `the 11 global communication rules (authoritative)` — was already stale at 10 before this project; rule 11 forces the fix. Structural drift-prevention (removing the count from `AGENTS.md` or deriving it from the file) is deferred to a future rule-hygiene project.
+- **Scope: all agent communication, not just `/wm:discover`** (FIN-002, FIN-003, FIN-004): project explicitly rejected narrower framings during discovery. (FIN-002) mechanism must be preventive (fires pre-draft) — reactive-only is rejected because it leaves the wall-of-text appearing once before self-correction; (FIN-003) failure spans all agent-to-user communication, not just discovery decision points, so the fix lives in `communication-rules.md` not `discovery-rules.md`; (FIN-004) rule-based amendment is the cheapest test of the "concrete priming beats abstract rules" hypothesis, with a dedicated priming hook held as v2 fallback if the rule-based mechanism fails live. Explicit non-candidate throughout: **numerical caps** (line counts, word counts, item limits) — rejected by user, see `feedback_no_numerical_rule_caps` in `ux-designer` memory.
+
+**Out of scope for v2.3 (deferred to v2.4+ only if v2.3 fails live test):** good/bad example pair appended to communication rules, dedicated priming hook, rule-count drift prevention in `AGENTS.md`.
+
+**Verification:** post-deploy live observation. Pass = next `/wm:discover` run and next non-discovery decision moment both produce compact-form messages without user re-prompting `"wall of text"` / `"too long"`. Fail = triggers v2.4 scope decision with concrete failure data.
+
+## v2.2 (2026-04-13)
+
+**Decision-prompt quality across all `/wm` workflows.** 8 FINs, T2, 10 plan steps across 4 waves. Single theme: put the right guidance in agent attention at the right moment, in one canonical place, with a mechanism that keeps it fresh. Five user-visible improvements land together.
+
+- **Brief-verdict verify commands with one-issue-at-a-time walkthrough** (FIN-001): the `verify-plan.md` Step 4/5 pattern — concise verdict section with issue titles only, then ONE issue presented with What / Why / Options / Recommendation and an explicit STOP waiting for user response — is now ported into `verify.md` Step 5/6 and reinforced in `verify-plan.md`. Anti-pattern language explicitly forbids bundling issues into a single wall-of-text verdict. Fixes the observed failure where `/wm:verify` dumped a multi-page combined verdict instead of walking issues one by one.
+- **Analysis-driven options across all `/wm` commands, no A/B/C padding** (FIN-002 + FIN-003): global `rules/discovery-rules.md` rule #1 rewritten — the number of options equals the number of defensible paths (one, two, three, or more), never padded to a fixed count, and a single-option answer is valid when only one path is defensible. Hard-coded `A) {Fix action} B) {Alternative} C) {Accept/defer}` placeholder templates stripped from `verify.md`, `verify-plan.md`, and `change.md`, each replaced with an explicit cross-reference to rule #1. Genuine menus (release proceed/re-verify/back, work-type selection, archive gate, etc.) preserved — the fix targets runtime placeholder filling, not pre-written decision menus.
+- **Single source of truth for rules + state-aware in-attention injection** (FIN-004 + FIN-005 + FIN-006): `discover.md` Step 2 "Discovery Principles" block and `execute.md` "Delegation rules" / "Model routing" blocks removed — the content now lives in `rules/discovery-rules.md` and `rules/execution-rules.md` with an explicit in-line pointer at the deleted location. No more drift risk from duplicated rule content across workflow + rules files. The dangling "Global Communication Rules" reference in `clean-up.md` is now explicit. New `hooks/inject-state-rules.sh` UserPromptSubmit hook — clones the proven `inject-communication-rules.sh` architecture (cadence: msg 1 then every 5, `.local-rules-only` scope escape, separate state-dir subdir) and detects the active project's `Current state:` to inject the matching rules file(s). Mapping: discovery/backlog → `discovery-rules.md`; planning/planned/plan-verified/executing/execution-paused → `execution-rules.md + editing-rules.md`; awaiting-verification/awaiting-release → `review-rules.md`. Registered alongside the communication-rules hook in `~/.claude/settings.json`.
+- **Research-informed expansion of discovery rules** (FIN-007): `rules/discovery-rules.md` grows from 4 rules to 8, driven by the multi-source workflow research synthesis. Rule #2 (trade-offs) strengthened to encourage lead-with-recommendation when analysis points to a clear winner. Rule #3 (uncertainty) reframed as a first-class input to discovery depth, not just a presentation flag. Rule #4 (challenge assumptions) strengthened to "challenge the solution, not the problem statement" with explicit constraints → problem → solution ordering. Three new rules: extract constraints before exploring options (appetite, non-goals, hard constraints), separate problem from solution when the user proposes a fix, scale discovery depth to ambiguity and novelty rather than stated project size. Wave 2's "dig into the hard parts; explain before deciding" content preserved as rule #8.
+- **Skill-building guidelines wired into `skill`-type work** (FIN-008): new `skills/wm/references/skill-building-guidelines.md` distilled from the Anthropic skills-building research — covers when to build a skill vs inline, SKILL.md hub budget and hub-spoke split criteria, symptom-based organization, description-as-trigger wording, Gotchas pattern, `lib/` and `assets/` placement, anti-proliferation curation discipline, and anti-railroading. Wired into `discover.md` (required_reading, Step 2 Phase 1, Step 3 Phase 2), `plan.md` (Step 6 plan generation), and `new-project.md` (Step 2 work-type menu `C) skill` option) as work-type-conditional guidance, mirroring the existing `app`-type PRD / tech-spec pattern. Source research doc relocated from `scratch/` to `docs/research/building-skills/`.
+
+**Execution ordering (4 waves, 10 steps):** Wave 1 independent fixes — FIN-001 / FIN-002 / FIN-005. Wave 2 dependent on Wave 1 — FIN-003 strips the templates rule #1 now forbids, FIN-004 consolidates rule content into the rewritten rules file. Wave 3 dependent on Wave 2 — FIN-007 expands the consolidated rules file, FIN-006 adds the hook that keeps the expanded content in attention, FIN-008 wires the skill-building guidelines into the Wave 2-cleaned `discover.md`. Wave 4 is this release note.
+
+## v2.1 (2026-04-11)
+
+**Verification-side rebuild + `/wm:doc-graph` + `/wm:code-graph`.** 19 FINs, T2, 20 plan steps across 5 waves. Applies the v2.0 artifact-based verification, reviewer subagent, and scratch file patterns to `plan.md` / `verify-plan.md` / `verify.md` / `execute.md` / `release.md` / `change.md` / `discover.md` / `learn.md`, and introduces a new structural-graph tool for markdown-heavy repos.
+
+- **`/wm:doc-graph` structural graph tool** (`skills/wm/tools/wm-doc-graph/`): Python package that builds and queries a YAML cache of every `.md` file's headers, XML-like signal tags (`<purpose>`, `<process>`, `<step>`, `<required_reading>`, ...), and outgoing references (`@~/...` / `@./...` includes, markdown links, bare paths inside `<required_reading>` blocks). Seven verbs: `build`, `refs` (`--out` / `--in` / `--both`), `ls`, `outline`, `impact` (`--mode=light` / `deep`), `check` (gate semantics — exits non-zero on broken refs), `search`. Incremental rebuild via mtime comparison (FIN-007), cold start <1s / warm no-op <300ms on the WM repo. 62 pytest unit/integration/compat tests. See FIN-005 through FIN-008, FIN-018.
+- **`/wm:doc-graph` slash command** (`commands/wm/doc-graph.md` + `skills/wm/workflows/doc-graph.md`): thin dispatcher — parses the verb + args, resolves the tool path (prefer production `~/.claude/skills/wm/tools/wm-doc-graph`, fall back to dev repo), runs `python -m wm_doc_graph` via Bash with the correct PYTHONPATH. Every other v2.1 workflow calls `/wm:doc-graph` via Skill dispatch — this is the only file that issues raw `python -m` calls. See FIN-018.
+- **`/wm:code-graph` slash command** (`commands/wm/code-graph.md` + `skills/wm/workflows/code-graph.md`): thin wrapper around the `code-review-graph` MCP server for code repositories. Scope guard refuses to run on markdown-only directories (presence of `agent.md`, absence of code-project markers, or >80% `.md` files) and points users at `/wm:doc-graph` instead. Curated 6-verb surface (`query`, `impact`, `architecture`, `search`, `refs`, `callers`) mapped to MCP tools at dispatch time. See FIN-019.
+- **Investigation gate in `plan.md`** (new Step 6a, FIN-003): before writing the plan, produce `projects/{name}/plans/{date}-{topic}-investigation.md` by dispatching `/wm:doc-graph refs` / `outline` / `ls` for every in-scope file. Plan steps can only name paths from the investigation file's candidate list. `verify-plan` Check 4 auto-fails any plan path not in the investigation.
+- **Haiku subagent for design + DECISIONS reading in `plan.md`** (new Step 6b, FIN-009b): summarizes DECISIONS.md and design doc to ~1K tokens before plan-writing. Main thread works from the summary, expanding on demand.
+- **Reviewer subagent across the verification surface** (FIN-010): `verify-plan.md` Step 3 wraps all 8 checks in a Sonnet reviewer subagent (FIN-010a); `verify.md` L5 becomes a Sonnet reviewer with artifact-only input contract — git diff + raw ladder logs + literal `Done-when` text (FIN-010b); L5 defaults to `Review: true` for every T2 project step (FIN-010c); `change.md` Step 6e wraps the deep-path option + plan in a reviewer verdict before user-facing presentation (FIN-012b); model pinned via `skills/wm/references/reviewer-config.md` (single source of truth, FIN-010d).
+- **Progressive disclosure + scratch output in `verify.md`** (FIN-009d + FIN-009e): Step 1 reads only STATE header + DECISIONS FIN index; per-FIN done-whens expanded on demand per check. Each ladder level (L1-L5) writes its raw output to `scratch/{date}-{topic}-ladder-L{N}.md`; chat shows pass/fail + failure excerpts only (≤500 tokens per level).
+- **Scratch output for deep impact scans** (FIN-009c + FIN-012b): `verify-plan.md` Check 7 writes full `/wm:doc-graph impact --mode=deep` output to `scratch/{date}-{topic}-impact.md`, chat shows ≤500-token summary. `change.md` Step 6d deep-path scan does the same (`change-impact.md`).
+- **Evidence column in `verify-plan.md` tables** (FIN-011): Coverage and Compliance tables gain an `Evidence` column carrying `{plan-file}:{line-range}`. Rows without computable evidence auto-fail as `missing`.
+- **FIN status model: 4-state `pending → done → verified → applied`** (FIN-013): `execute.md` writes `pending → done` per completed step plus final sweep (FIN-014). `verify.md` writes `done → verified` on L5-confirmed criteria, never regressing on failure (FIN-015). `release.md` promotes `verified → applied` and warns on stale (`pending` / `done`) FINs at release time, requiring per-FIN user acknowledgment (FIN-016). This v2.1 release itself bootstraps with `pending → applied` because v2.1's new status flow can't run until v2.1 is live.
+- **Pre-wave graph impact + per-wave status writeback in `execute.md`** (FIN-004 execute + FIN-014): each wave runs `/wm:doc-graph impact --mode=light` as an informational soft gate (not blocking unless verdict is `conflict` / `blocked`). After each step/wave commits, matching pending FINs transition to `done`. Step 8 final sweep catches any still-pending FINs whose `Done-when` is now satisfied.
+- **Version bump moves from `plan.md` to `release.md`** (FIN-009a): `plan.md` Step 5 is now read-only (records `Version source:` + `Target version:` in DECISIONS.md header). `release.md` Step 2 absorbs the write — reads those fields, reads current version from the source file, writes the new value back. `release.md` is the only place in v2.1 that writes a version string.
+- **Pre-deploy `/wm:doc-graph check` gate in `release.md`** (FIN-004 release): `release.md` Step 3 runs the broken-reference scan as a hard gate before deploy. Release hard-fails if any reference is broken.
+- **Archive gate fires on agent context, not work type** (FIN-017): `plan.md` Step 4 archive gate trigger changed from `work_type in {next-version, skill}` to `test -f cwd/agent.md`. Fires only in Markdown-Agents agent directories; skips silently everywhere else. Retires the `~/.claude/hooks/inject-communication-rules.sh` hook.
+- **Cross-project overlap scan in `discover.md`** (FIN-004 discover, new Step 1b): at the start of fresh discovery, dispatches `/wm:doc-graph impact --mode=light` against active project scopes. Surfaces a 5-15 line overlap report with three options (abandon / narrow / proceed deliberately). Supersedes the deferred `discover-overlap-scan` project.
+- **Search-driven routing in `learn.md`** (FIN-004 learn, new Sub-step 5a2): dispatches `/wm:doc-graph search` on lesson keywords to rank routing candidates, cross-references with Step 3's partition candidates, labels each suggestion's provenance ("partition match", "search hit", or "both") in the Step 5c user prompt.
+- **Full v2.1 treatment of `change.md`** (FIN-012a + FIN-012b): Step 2 triage uses `/wm:doc-graph refs` + `search` instead of inline Read/Grep. Steps 5 (scoped) and 6d (deep) use `/wm:doc-graph impact`. All three edit paths (trivial / scoped / deep) run `/wm:doc-graph check` as a post-edit commit gate. Deep path Step 6a delegates investigation to a Haiku subagent; Step 6e wraps the proposal in a Sonnet reviewer.
+- **Rule 6 — autonomous plan execution** (`.claude/rules/execution-rules.md`): added from a `/wm:learn` session where the user corrected mid-wave. Once a plan is approved, workflows advance through steps autonomously; valid stop triggers are context-warning fired, decision outside plan scope, error needing judgment, destructive action. "Natural checkpoint after completing X" is not a trigger.
+
+**Release note:** this is a bootstrap release — v2.1's own verification is the v2.0 flow, and FIN status promotion uses the v2.0 `pending → applied` semantics because v2.1's `verified → applied` flow requires v2.1 to be live. Subsequent releases use the full v2.1 flow end-to-end.
+
+## v2.0 (2026-04-11)
+
+**Agent reasoning quality + token optimization.** Major release — hooks-enforced investigation, scoped rules, progressive handoffs, code graph MCP.
+
+- **3 new hooks** (all warn-only per FIN-018): `tool-gate.py` (PreToolUse Write|Edit — blocks writes to uninvestigated files, tracks reads/greps/code-graph queries in sidecar), `context-monitor.py` (UserPromptSubmit — parses transcript JSONL for real `usage` fields, warns at 40/50/60/70/80/90% of context window), `verification-output.py` (PostToolUse Bash — first-token matcher for pytest/jest/eslint/tsc/etc., writes full output to `scratch/verification-output.log`, returns structured summary). See FIN-002, FIN-003, FIN-005.
+- **Code graph MCP** (`code-review-graph` v2.2.2): installed as MCP server, 24 tools (`get_impact_radius_tool`, `query_graph_tool`, `semantic_search_nodes_tool`, etc.). Configured via `.mcp.json`. Code graph queries satisfy the tool-gate investigation gate. See FIN-013.
+- **Scoped agent rules** (`.claude/rules/`): monolithic AGENTS.md cut from ~550 to ~310 tokens. 15 numbered rules moved to 4 activity-scoped files (`discovery-rules.md`, `execution-rules.md`, `editing-rules.md`, `review-rules.md`), each under 300 tokens. Deployed to `~/.claude/rules/` during release. See FIN-008.
+- **Structured handoffs** (`save.md` redesign): handoff.md is now a ~500 token structured checkpoint (State / Next action / How to execute / Key files). No more narrative "accomplished" section — git history and STATE.md carry that. Session stats from hook sidecars. See FIN-006, FIN-012.
+- **Progressive disclosure on resume** (`resume.md` redesign): context loading is scoped by project state. `executing` loads handoff + current plan step only. `between-cycles` loads DECISIONS.md only. No full project state dump. See FIN-006.
+- **Immediate decision save during discovery** (`discover.md`): FIN entries are written to DECISIONS.md as soon as the user confirms them in Phase 1/2. Step 5 becomes review-only. Prevents decision loss on unexpected session end. See FIN-007.
+- **Delegation rules + model routing** (`execute.md` Step 5b): subagents for discovery/review/read-heavy tasks, main thread for planning/small edits. Model routing: Haiku for discovery, Sonnet for reviewers, Opus for main thread. Structured ~1K token return schema required. See FIN-009, FIN-014.
+- **L5 reviewer sees artifacts only** (`execute.md` 5b + `verify.md` Step 3): reviewer subagent receives diff + test output + plan step intent. No primary agent narrative. Default model: Sonnet. Removes inter-agent sycophancy. See FIN-010.
+- **Line-range reads as default** (`.claude/rules/execution-rules.md` rule 3, `execute.md` 5a, `discover.md` Step 1): navigate structurally first (grep, glob, code graph), then targeted line ranges. Whole-file reads only for small files (<100 lines). See FIN-011.
+- **Retired `inject-communication-rules.sh` hook**: removed from `settings.json` UserPromptSubmit registration (FIN-017). Script retained on disk for rollback. Scoped rules + 40% ceiling + disposable agents replace the periodic re-injection band-aid.
+- **`release.md` rewritten**: Step 4 now deploys `.claude/rules/*.md` → `~/.claude/rules/` and `hooks/*.py` → `~/.claude/hooks/`. Does not modify `settings.json` (manual only). Does not reinstall retired injection hook. Idempotent file-level verification.
+
+## v1.7 (2026-04-10)
+
+- `/wm:verify-plan` gains a design-coverage check (check #8 in Step 3): reads the design doc, enumerates decisions from prose, maps each to plan step `Done-when` criteria, surfaces gaps with A/B/C resolution per gap (fix now / mark N/A / accept). Runs whenever `plans/*-design.md` exists; skipped with a note otherwise. Not tier-gated. See FIN-002, FIN-003 in `projects/2026-04-08-verify-gap-fixes/DECISIONS.md`.
+- Plan Verification Report template (`references/templates.md`) gains a `### Design coverage` section with `Decision | Covered by | Status` table. See FIN-004.
+
+## v1.6 (2026-04-10)
+
+- New `/wm:clean-up` command — tidy workspace: dry-report stale projects (between-cycles + last session > 5 days) and aged scratch files (> 5 days), then archive projects or promote/remove scratch files on user confirmation. Agent pre-scans STATE.md/DECISIONS.md/handoff.md to form a done/abandoned/unclear judgment before asking user. Archive only, never delete.
+
+## v1.5 (2026-04-09)
+
+- New `/wm:learn` command — capture lessons from sessions (Mode A: diagnose, Mode B: extract) and route them to the partition where they earn their keep (text-rule / hook / skill-reference). Investigate-and-recommend flow, never auto-saves. See FIN-006 through FIN-021 in `projects/archive/2026-04-09-compound-learning-command/DECISIONS.md`.
+- New reference layout `skills/wm/references/learn/` — grouped references for the `/wm:learn` command (`learn-partitions.md`, `learn-routing.md`, `learn-checks.md`, `learn-verification.md`) plus hook scaffolding templates under `learn/templates/`. First use of per-command reference subfolder pattern in wm.
+- New `UserPromptSubmit` hook `inject-communication-rules.sh` — re-injects global communication rules every 5 user messages per session (message 1, 5, 10, 15, ...) to counteract the Khare compliance decay curve. Per-session counter in `~/.claude/hook-state/{session_id}.json`. Includes FIN-005 stale-state cleanup (7-day sweep on first message of each session). See FIN-003.
+- New `rules/communication-rules.md` — single source of truth for the 9 global communication rules. Replaces `global/AGENTS.md` (FIN-002). Dev repo layout now mirrors deployed `~/.claude/rules/` layout.
+- `/wm:release` extended — deploys the new hook, rules file, and settings.json merge; idempotent by design; cleans up stale `~/.claude/AGENTS.md` when it matches the old 9-rules content (FIN-004).
+- Rewrote communication rules 1, 6, 7, and 8 to close scope loopholes that let the agent silently skip them in discovery and investigation modes. Rule 1 now says "Lead with the point" in every mode, not only decision-asks. Rule 8 requires jargon definitions in every response, not just once per conversation.
+
+## v1.4 (2026-04-07)
+
+- New shared primitive `references/impact-scan.md` — 4-dimension scan (files / FIN / downstream / drift) in light or deep mode
+- New `/wm:change` command — adaptive triage (trivial / scoped / deep), works standalone or in active project, propose-before-edit for non-trivial classes
+- Removed `/wm:quick` — replaced by `/wm:change` with auto-triage (no alias, hard replacement)
+- `/wm:discover` — light impact scan per new FIN to catch FIN-FIN conflicts before planning
+- `/wm:verify-plan` — deep impact scan against all plan files; hard gate on `conflict`/`blocked` verdicts
+- `/wm:execute` — pre-wave deep scan; pauses on undeclared downstream impact
+
+## v1.3 (2026-03-22)
+
+- Native planning and execution — replaced framework delegation (superpowers/GSD) with self-contained workflows
+- 3-tier system: T0 (just do it), T1 (checklist), T2 (plan-verified) — scales ceremony by project type
+- Hybrid tier classification: work type sets default, auto-upgrades on >3 files or shared state changes
+- T1 checklist plan format (5-15 checkboxes, skips verify-plan)
+- T2 structured plan format with wave assignments and verification metadata
+- Wave-based parallel execution with subagent spawning (max 3 per wave)
+- Three deviation rules: trivial fix (auto), plan gap (pause), architecture drift (escalate)
+- Expanded handoff.md with checkpoint protocol (every 3-5 steps for T2)
+- Native 5-level verification ladder: static → targeted tests → regression → smoke → reviewer subagent
+- Deleted framework-routing.md — all routing is now direct WM commands
+- Updated release.md and resume.md to remove framework references
+
+## v1.2 (2026-03-18)
+
+- Decomposed all 14 command files into thin triggers + workflow files
+- Commands now use GSD-style XML structure (`<objective>` + `<execution_context>` + `<process>`)
+- Workflow files live in `~/.claude/skills/wm/workflows/` using `<purpose>` + `<required_reading>` + `<process>` with `<step>` elements
+- 1:1 command-to-workflow mapping, self-contained workflows
+- References unchanged
+
+## v1.1 (2026-03-17)
+
+- Unified discovery flow (open conversation + gray areas)
+- Universal handoff and tool specs
+
+## v1.0 (2026-03-08)
+
+- Initial release: workflow state machine, gate matrix, commands, references

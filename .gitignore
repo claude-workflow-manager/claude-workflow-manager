@@ -1,0 +1,30 @@
+# Temporary
+scratch/
+docs/research/
+
+# Planning artifacts
+.planning/
+projects/
+# Top-level scratch tests only — nested tool test suites (e.g.
+# skills/wm/tools/wm-doc-graph/tests/) are tracked.
+/tests/
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude settings (ignore everything — rules live in /rules/)
+.claude/
+.mcp.json
+
+# Code graph (generated database)
+.code-review-graph/
+
+# wm-doc-graph cache (generated, per-repo)
+.wm-doc-graph.yaml
+docs/document-graph.yaml
+
+desktop.ini
+
+# Removed per FIN-020 — prevent Windows from recreating the stale `global/` folder
+global/

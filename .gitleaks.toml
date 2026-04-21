@@ -1,0 +1,41 @@
+title = "Workflow Manager gitleaks config"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# WM-specific custom rules
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id          = "wm-personal-username"
+description = "Personal Windows username in absolute path — sanitize before public push."
+regex       = '''(?i)C:\\Users\\Tomasz\\'''
+keywords    = ["Tomasz"]
+
+[[rules]]
+id          = "wm-internal-email"
+description = "Internal company email address — sanitize before public push."
+regex       = '''[a-zA-Z0-9._%+\-]+@(fusecollective|fuseworld)\.com'''
+keywords    = ["fusecollective", "fuseworld"]
+
+[[rules]]
+id          = "wm-absolute-dev-path"
+description = "Hardcoded absolute dev path — replace with env var."
+regex       = '''(?i)d:/Dev/Tools/Workflow-manager'''
+keywords    = ["Workflow-manager"]
+
+# ---------------------------------------------------------------------------
+# Allowlist — exclude maintainer-only / gitignored content from scanning
+# ---------------------------------------------------------------------------
+
+[allowlist]
+description = "Exclude maintainer-only and gitignored content"
+paths = [
+    '''projects/.*''',
+    '''scratch/.*''',
+    '''archive/.*''',
+    '''\.git/.*''',
+    '''memory/.*''',
+    '''skills/wm/archive/.*''',
+]
