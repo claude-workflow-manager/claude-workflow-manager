@@ -3,7 +3,8 @@ Save workflow state and create a handoff for the next session. This replaces `/h
 </purpose>
 
 <required_reading>
-(none — self-contained)
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/editing-rules.md
 </required_reading>
 
 <process>
@@ -35,6 +36,8 @@ Update the `## Last session` section in `projects/{name}/STATE.md`:
 </step>
 
 <step name="Step 4 — Write structured handoff">
+Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+
 Write `projects/{name}/handoff.md` as a **structured checkpoint** — compact, machine-readable, scoped to the immediate next action. The resuming agent starts fresh with zero context.
 
 **Target: under 500 tokens.**

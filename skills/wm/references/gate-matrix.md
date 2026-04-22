@@ -50,13 +50,7 @@ Work type sets a **default tier**. The agent can **upgrade** based on signals du
 ## Gate Meanings
 
 - **Hard:** Gate must be met before advancing. Blocked until resolved. `/wm:skip` can override with logged justification.
-- **Soft:** Gate is recommended but not required. User is prompted with labeled options:
-  ```
-  Gate '{gate}' not met.
-  A) Do it now — {specific action}  ← recommended
-  B) Skip — proceed without it
-  ```
-  User types `ok` or `A` → do the action. `B` → skip. Always recommend A for soft gates.
+- **Soft:** Gate is recommended but not required. When not met, the workflow asks the user whether to do the specific fix action now (always recommended) or skip it and proceed. Presentation of that prompt follows `rules/communication-rules.md` — workflows do not prescribe a canned shape for it.
 - **Skip:** Gate does not apply at this tier. Auto-pass, no prompt.
 
 ## Verification Ladder
@@ -83,9 +77,9 @@ Work type sets a **default tier**. The agent can **upgrade** based on signals du
 
 If precondition is met:
 1. Read DECISIONS.md header for target skill/agent name and current version
-2. Look for archive folder: `skills/{name}/archive/{name}-v{version}/` or equivalent
-3. Run `git log --oneline -- "skills/{name}/archive/"` — confirm commit exists
-4. Fail: "Archive gate not met. Copy `skills/{name}/` to `skills/{name}/archive/{name}-v{current}/` and commit."
+2. Look for archive folder: `docs/archive/{name}-v{version}/` or equivalent
+3. Run `git log --oneline -- "docs/archive/"` — confirm commit exists
+4. Fail: "Archive gate not met. Copy `{agent-root}/` to `docs/archive/{name}-v{current}/` and commit."
 
 If precondition is NOT met (no `agent.md` in cwd): skip silently — no prompt, no warning, no log.
 
@@ -105,12 +99,7 @@ If precondition is NOT met (no `agent.md` in cwd): skip silently — no prompt, 
 ### All tasks have commits
 1. Read plan file — count total tasks/steps
 2. Run `git log --oneline -20` — look for task completion commits
-3. If count mismatch, present:
-   ```
-   N of M tasks appear committed.
-   A) Continue anyway  ← recommended
-   B) Stop — review missing commits
-   ```
+3. If count mismatch, tell the user how many of the expected commits appear, and ask whether to continue anyway (recommended if progress is solid) or stop and review the missing commits. Presentation follows communication rules.
 
 ### DECISIONS.md all `status: applied`
 1. Read DECISIONS.md entries

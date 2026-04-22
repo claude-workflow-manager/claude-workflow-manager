@@ -4,6 +4,7 @@ Tidy the wm workspace: archive stale projects, promote or remove aged scratch fi
 
 <required_reading>
 @~/.claude/rules/communication-rules.md
+@~/.claude/rules/editing-rules.md
 </required_reading>
 
 <process>
@@ -54,28 +55,17 @@ Form a judgment:
 - "Unclear" — anything else
 
 **3b. Present to user:**
-```
-Project: {name} ({state}, last session {date})
-Assessment: {looks done | looks abandoned | in progress | unclear}
-Reason: {1-sentence justification}
+Summarize the project — name, current state, last session date, your assessment (looks done, looks abandoned, in progress, or unclear), and a one-sentence reason. Then ask the user to pick one of four actions: archive as done, archive as abandoned, keep in place, or explain (investigate further and report before deciding). Presentation follows communication rules. Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
 
-Action?
-  D) Done — archive as finished
-  A) Abandoned — archive as abandoned
-  K) Keep — leave in place
-  E) Explain — investigate and report before deciding
-```
-Wait for user response — follow `rules/communication-rules.md`.
-
-**3c. Execute:**
-- D (done): `mv projects/{name}/ projects/archive/{name}/` then remove row from `projects/ACTIVE.md`
-- A (abandoned): `mv projects/{name}/ projects/archive/{name}-abandoned/` then remove row from `projects/ACTIVE.md`
-- K (keep): do nothing
-- E (explain): Read STATE.md, DECISIONS.md, handoff.md, and any plan files. Report:
+**3c. Execute:** Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+- Done: `mv projects/{name}/ projects/archive/{name}/` then remove row from `projects/ACTIVE.md`
+- Abandoned: `mv projects/{name}/ projects/archive/{name}-abandoned/` then remove row from `projects/ACTIVE.md`
+- Keep: do nothing
+- Explain: Read STATE.md, DECISIONS.md, handoff.md, and any plan files. Report:
   1. What the project is about (1-2 sentences)
   2. Whether the current state label is accurate
   3. For each DECISIONS.md entry: is it implemented? (check the target files)
-  Then re-present the D/A/K prompt and wait for user response.
+  Then re-present the done/abandoned/keep prompt and wait for user response.
 
 Move to next project.
 </step>
@@ -83,20 +73,12 @@ Move to next project.
 <step name="Step 4 — Handle aged scratch files">
 If no aged scratch files: print "No aged scratch files." Skip this step.
 
-Print the aged scratch file list again. For each file, ask:
-```
-File: {path} ({N days old})
-  P) Promote — move to another folder
-  X) Delete — remove permanently
-  K) Keep — leave in scratch
-  E) Explain — show file contents summary before deciding
-```
-Wait for user response per file — follow `rules/communication-rules.md`.
+Show the aged scratch file list again. For each file, name the path and its age in days, then ask the user to pick one of four actions: promote (move to another folder), delete permanently, keep in scratch, or explain (show contents summary before deciding). Presentation follows communication rules. Wait for user response per file — Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
 
-**Promote:** Infer a default target path from the file/folder name (e.g. `scratch/research-X/` → `docs/research/X/`, `scratch/foo.md` → `docs/foo.md`). Present: "Promote to: {suggested path} — confirm or enter alternative." Then `mv {file} {target}`.
+**Promote:** Infer a default target path from the file/folder name (e.g. `scratch/research-X/` → `docs/research/X/`, `scratch/foo.md` → `docs/foo.md`). Propose the target path and ask the user to confirm or name an alternative. Then `mv {file} {target}`.
 **Delete:** `rm {file}`
 **Keep:** do nothing
-**Explain:** Read the file, summarize in 2-3 sentences (what it is, whether it looks useful or stale). Then re-present the P/X/K prompt.
+**Explain:** Read the file, summarize in 2-3 sentences (what it is, whether it looks useful or stale). Then re-present the promote/delete/keep prompt.
 
 After all files handled, print "Scratch clean-up done."
 </step>

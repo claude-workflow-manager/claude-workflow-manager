@@ -3,7 +3,7 @@ Show current workflow status across all active projects. Read-only — does not 
 </purpose>
 
 <required_reading>
-(none — self-contained)
+@~/.claude/rules/communication-rules.md
 </required_reading>
 
 <process>
@@ -14,11 +14,7 @@ If missing or empty: "No active projects." STOP.
 </step>
 
 <step name="Step 2 — Show project summary">
-For each project in ACTIVE.md, read `projects/{name}/STATE.md` and show:
-
-```
-{name} | {work-type} | {state} | Last: {last session} | Next: {recommended command}
-```
+For each project in ACTIVE.md, read `projects/{name}/STATE.md` and summarize: name, work type, current state, last session, and the recommended next command. Pick a compact shape (table, pipe-separated line, or bulleted) — presentation follows communication rules.
 </step>
 
 <step name="Step 3 — Single project detail (if only one)">
@@ -66,24 +62,7 @@ Compute the mtime diff in days: `abs(plugin_mtime - shadow_mtime) / 86400`, roun
 
 **4.5 — Render the section.**
 
-If no shadows exist:
-
-```
-## Shadowed files
-
-None.
-```
-
-If shadows exist, render a table. Use relative paths from the plugin root as **Path**. Use the full expanded shadow path as **Shadow at**. Use the drift classification as **Drift** (format: `—` for no drift, `upstream-newer (mtime diff: Nd)`, or `customized (mtime diff: Nd)`):
-
-```
-## Shadowed files
-
-| Path | Shadow at | Drift |
-|---|---|---|
-| rules/discovery-rules.md | ~/.claude/rules/discovery-rules.md | — |
-| skills/wm/workflows/execute.md | ~/.claude/skills/wm/workflows/execute.md | upstream-newer (mtime diff: 12d) |
-```
+Add a "Shadowed files" section. If no shadows exist, say so in one line. If shadows exist, show three columns of information per shadow: path (relative from the plugin root), the full expanded shadow path, and the drift classification (format: `—` for no drift, `upstream-newer (mtime diff: Nd)`, or `customized (mtime diff: Nd)`). A table is typically the right fit for this structured data; the exact column order and layout are presentation choices — follow communication rules.
 
 Place this section after the single-project detail block and before any next-step or routing suggestion.
 </step>

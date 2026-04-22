@@ -4,6 +4,8 @@ Capture a lesson from the current session (Mode A: diagnose something that went 
 
 <required_reading>
 @~/.claude/rules/review-rules.md
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/editing-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/learn/learn-partitions.md
 <!-- plugin-root-fallback -->
@@ -143,8 +145,8 @@ Build a concrete statement of the lesson itself — what happened, what should b
 **If mode == extract (Mode B):**
 - Identify the artifact the lesson should be extracted from. Apply the three-tier binding in order:
   1. **Explicit pointer** — if the command hint contains a path or a clear pointer (`/wm:learn from posts/xyz/draft-final.md`), use that path.
-  2. **Most recent significant completion** — look at `recent_completions` for the most recent `Write`/`Edit` on a file matching artifact patterns (post drafts, docs, reference files, skill files, images in a post folder). Confirm the match with the user in one sentence before proceeding: "Extract from `{path}`? (Y to confirm, or name a different file)".
-  3. **Ask** — if neither applies, ask: "I don't see a recent finished artifact in this session. What should I extract from? (path, or 'transcript only' if the finished thing was a conversation)".
+  2. **Most recent significant completion** — look at `recent_completions` for the most recent `Write`/`Edit` on a file matching artifact patterns (post drafts, docs, reference files, skill files, images in a post folder). In one sentence, confirm the inferred path with the user and ask them to confirm or name a different file.
+  3. **Ask** — if neither applies, ask the user what to extract from (a path, or "transcript only" if the finished thing was a conversation).
 - Artifact-less Mode B (transcript-only) is allowed — no special case.
 - Output: `artifact_path` (or `none`), `session_turns_relevant` (the subset of turns where the creative decisions happened).
 
@@ -202,10 +204,7 @@ Determine which dev workspace owns the target component. Use the partition candi
 4. If none of the above resolves, ask the user: "This lesson targets `{path}`. Which dev workspace should own the fix?"
 
 **5c. Confirm with user:**
-Present the inferred workspace in one line and ask for confirmation:
-```
-Fix targets {component} → dev workspace: {workspace path}. Correct? (Y to confirm, or name a different workspace)
-```
+In one line, state the inferred target component and dev workspace path and ask the user to confirm or name a different workspace. Presentation follows communication rules.
 
 **5d. Classify bucket (lightweight metadata):**
 <!-- plugin-root-fallback -->
@@ -234,6 +233,8 @@ routing:
 </step>
 
 <step name="Step 6 — Run investigation checks and FIN quality gate">
+Follow [#Review Rules](rules/review-rules.md#review-rules) from rules/review-rules.md
+
 Run investigation checks against `routing.target_file` from Step 5 to understand the current state of the target and produce informed FIN entries. The checks investigate — they do not generate deliverables (no scripts, no diffs, no file content).
 
 **6a. Common checks (all buckets):**
@@ -281,23 +282,13 @@ check_results:
 </step>
 
 <step name="Step 7 — Present recommendation">
+Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
+
 Present a concise routing recommendation. The user needs to decide: is this the right fix, going to the right place? All investigation details go to the project, not the chat.
 
-**Recommendation format (same for all buckets):**
+**Recommendation content (same for all buckets):** one sentence saying what the lesson is about; the bucket type with a one-sentence reason; the target file and dev workspace; whether any conflicts were found (from Step 6); and the proposed action (create a new project, or add to an existing active project by name). Then ask the user to approve, cancel, or redirect to a different workspace/project.
 
-```
-## /wm:learn recommendation
-
-**Found:** {one sentence — what the lesson is about}
-**Type:** {bucket} — {one sentence why}
-**Targets:** {target_file} in {dev_workspace}
-**Conflicts:** {none | one-line summary of conflicts from Step 6}
-**Action:** {Create new project | Add to existing project "{name}"}
-
-Approve? (Y to confirm, N to cancel, or suggest a different workspace/project)
-```
-
-Keep it under 10 lines. No code examples, no diffs, no detailed check dumps. The investigation details (existing content analysis, conflict specifics, quality assessment) are written to the project in Step 8.
+Keep it tight — no code examples, no diffs, no detailed check dumps. Presentation follows communication rules. The investigation details (existing content analysis, conflict specifics, quality assessment) are written to the project in Step 8.
 
 **Wait for user response:**
 - "ok" / "yes" / "Y" → proceed to Step 8.
@@ -309,12 +300,14 @@ Keep it under 10 lines. No code examples, no diffs, no detailed check dumps. The
 </step>
 
 <step name="Step 8 — Create or update dev project">
+Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+
 After user approval in Step 7, route the lesson to the appropriate dev project.
 
 **8a. Check for existing project match:**
 Read `projects/ACTIVE.md` in the target dev workspace (from `routing.dev_workspace`). Look for active projects that cover the same target file or topic.
 
-- If a matching project exists → offer: "Add FIN entry to existing project `{name}`? (Y to add, N to create new)"
+- If a matching project exists → ask the user whether to add the FIN entry to that project or create a new one. Presentation follows communication rules.
 - If no match → create a new project via the standard scaffold (same structure as `/wm:new-project`): `projects/{date}-{slug}/STATE.md`, `DECISIONS.md`, `handoff.md`. Add a row to `projects/ACTIVE.md` in the target dev workspace.
 
 **8b. Seed DECISIONS.md with investigation findings:**
@@ -350,20 +343,11 @@ Seed with session continuity info only (not investigation details — those live
 
 **8d. Confirm to user:**
 
-```
-Project: {project name} ({created | updated})
-FIN entry: {FIN-NNN title}
-Workspace: {dev_workspace path}
-Next: run /wm:discover in that workspace to design the fix
-```
+Confirm the action taken — which project was created or updated, which FIN entry was added, in which dev workspace, and the recommended next command (`/wm:discover` in that workspace to design the fix). Presentation follows communication rules.
 
 **8e. Run archetype growth prompt if flagged (from Step 5e):**
 
-If `archetype_unknown == true` OR `partition_not_in_map == true`, ask:
-"This partition type wasn't in my map for {archetype}. Add it to learn-partitions.md for future runs? (Y/N)"
-
-- Y → append the new partition entry to `learn-partitions.md`.
-- N → skip.
+If `archetype_unknown == true` OR `partition_not_in_map == true`, ask the user whether to add the new partition type to `learn-partitions.md` for future runs. If approved, append the new partition entry; otherwise skip.
 
 **End of workflow.** The user's next action is their own. Do not auto-advance to any other wm command.
 </step>

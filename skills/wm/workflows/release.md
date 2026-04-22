@@ -4,6 +4,9 @@ Run release steps for the active project. Handles work-type-specific release act
 
 <required_reading>
 @~/.claude/rules/execution-rules.md
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/editing-rules.md
+@~/.claude/rules/review-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/gate-matrix.md
 </required_reading>
@@ -57,6 +60,8 @@ Read `projects/{name}/DECISIONS.md` for work type and target version.
 </step>
 
 <step name="Step 4 — Pre-deploy verification">
+Follow [#Review Rules](rules/review-rules.md#review-rules) from rules/review-rules.md
+
 Before deploying, verify all DECISIONS.md entries have `Status: applied`.
 If any are still `pending` or `done` or `verified` (i.e. not yet `applied`): "Not all decisions applied: [list]. Fix before releasing." STOP.
 
@@ -67,9 +72,13 @@ If any are still `pending` or `done` or `verified` (i.e. not yet `applied`): "No
 **Archive subtrees are excluded by default.** `check` skips any path whose parent directories contain a segment named `archive/` — these subtrees are frozen historical state, so broken refs inside them are expected, not regressions. If a release genuinely needs whole-repo scanning (e.g., verifying an archive's internal consistency), dispatch `/wm:doc-graph check --include-archives` manually and review the output; do not waive this gate on archive-originating noise.
 
 If `/wm:doc-graph` itself is unavailable (tool not deployed — this would be the first-ever release that ships it), print a one-line note that the check was skipped and continue. After the first v2.1 release, subsequent releases can rely on the check being available.
+
+**Rule-reminder staleness check (FIN-003) — warn-only in v1.1.0.** Dispatch `/wm:doc-graph check-rule-reminders` via Skill alongside the broken-reference check above. The verb parses every FIN-002 canonical-form reminder in `skills/wm/workflows/*.md` and flags any workflow file whose last-modified time is older than the rule file it cites. In v1.1.0, the verb runs in warn-only mode: staleness output appears in the release log but does not block. After one release cycle with no false-positive noise, flip the verb to hard-block mode (see the final `exit 0` → `exit 1` switch documented inline in `doc-graph.md` Step 5). Until that flip, **do not treat a non-zero exit from `check-rule-reminders` as a release blocker** — only the `check` verb blocks.
 </step>
 
 <step name="Step 5 — Deploy dev → production">
+Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+
 Dev repo is the source of truth. Production (`~/.claude/`) is a deployment target.
 
 **4a. Commands and skills:**
@@ -114,6 +123,8 @@ Files that exist in prod but NOT in dev are allowed (prod-only rules, legacy hoo
 </step>
 
 <step name="Step 7 — Publish public snapshot (FIN-006) — opt-in via `--publish`">
+Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
+
 Push a sanitized snapshot of the current working tree to the public GitHub repo. **Opt-in only** — this step runs only when the user explicitly passes `--publish`.
 
 **Opt-in condition:** If `--publish` flag was NOT passed, log "Publish step skipped — internal release only. Pass --publish to push to the public GitHub repo." and exit this step cleanly. This is the default behavior for every `/wm:release` invocation — internal-only, nothing leaves the dev repo.

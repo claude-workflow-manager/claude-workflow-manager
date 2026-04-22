@@ -4,6 +4,8 @@ Run implementation verification after execution. Applies the native verification
 
 <required_reading>
 @~/.claude/rules/review-rules.md
+@~/.claude/rules/discovery-rules.md
+@~/.claude/rules/communication-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/gate-matrix.md
 </required_reading>
@@ -26,6 +28,8 @@ If state is not `executing`: "Not ready for verification. Current state: `{state
 </step>
 
 <step name="Step 3 — Run verification ladder">
+Follow [#Review Rules](rules/review-rules.md#review-rules) from rules/review-rules.md
+
 Read `~/.claude/skills/wm/references/gate-matrix.md` for verification levels per tier.
 
 **Scratch output rule (FIN-009d):** each ladder level writes its **raw** output to its own scratch file at `scratch/{YYYY-MM-DD}-{topic}-ladder-L{N}.md`. The chat surface shows **pass/fail + failure excerpts only** — ≤500 tokens per level. Long test logs, lint reports, and reviewer findings never blow up the main report; reviewers click into the scratch file for full detail.
@@ -114,7 +118,7 @@ If no issues: skip to Step 7.
 
 **Why it matters:** {Consequences if released as-is — what breaks, what users hit, what degrades}
 
-**Options:** Present the options that analysis actually supports — one, two, or more. Follow `rules/discovery-rules.md` rule #1: no padding, every option must earn its place, a single-option answer is valid when only one path is defensible. Slot C-style "accept/defer" filler is forbidden.
+**Options:** Present the options that analysis actually supports — one, two, or more. Follow [#Discovery Rules](rules/discovery-rules.md#discovery-rules) from rules/discovery-rules.md
 
 **Recommendation:** {letter or "only option"} — {one-sentence reasoning}
 ```
@@ -145,21 +149,11 @@ Apply these fixes? (ok to confirm, or specify overrides like "Issue 1: C instead
 </step>
 
 <step name="Step 8 — Present final options">
-If **no issues were found** (all checks passed):
-```
-Ready to release. Proceed? (Y/N)
-```
-- "Y" / "ok" → advance to awaiting-release
-- "N" → stay in executing
+If **no issues were found** (all checks passed): ask the user whether to proceed to release. Approval advances the project to `awaiting-release`; decline stays in `executing`.
 
-If **issues were resolved** in Steps 6-7:
-```
-A) Proceed to release (advance to awaiting-release)
-B) Re-verify after fixes
-C) Back to executing
-```
+If **issues were resolved** in Steps 6-7: ask the user to pick one of — proceed to release (advance to `awaiting-release`), re-verify after the fixes landed, or go back to executing. Wait for user choice.
 
-Wait for user choice.
+Presentation follows communication rules — do not impose a canned shape.
 </step>
 
 <step name="Step 9 — Update state and auto-route to release">

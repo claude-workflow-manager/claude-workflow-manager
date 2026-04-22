@@ -4,6 +4,8 @@ Enter discovery stage for the active project. Two-phase unified discovery flow: 
 
 <required_reading>
 @~/.claude/rules/discovery-rules.md
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/editing-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/impact-scan.md
 <!-- plugin-root-fallback -->
@@ -20,12 +22,7 @@ Find the active project → read `projects/{name}/STATE.md`, `projects/{name}/DE
 
 If DECISIONS.md already has entries (lines starting with `### `), list them.
 
-If codebase detected without description (no README, AGENTS.md, or PROJECT.md describing it):
-```
-I see existing code but no description.
-A) Review existing code first  ← recommended
-B) Start fresh — I'll describe it myself
-```
+If codebase detected without description (no README, AGENTS.md, or PROJECT.md describing it): ask the user whether to review the existing code first (recommended — gives you grounding) or start fresh with the user describing the project. Presentation follows communication rules.
 
 **Sub-step 1b — Cross-project overlap scan (FIN-004 — new projects only):**
 
@@ -39,12 +36,38 @@ If this invocation is starting a fresh discovery (not resuming mid-project), che
    - **Overlap found** → list each other project that the impact scan flagged, the shared files, and any FIN IDs from that project whose bodies mention the same paths. Ask the user: (A) abandon this project and contribute to the overlapping one, (B) narrow this project's scope to avoid the conflict, (C) proceed deliberately — log the overlap as a FIN in this project's `DECISIONS.md` so it is visible during verification.
 
 If `/wm:doc-graph` is unavailable (tool not deployed / MCP not registered / `cwd` is not a markdown-heavy repo), print one line noting the check was skipped and continue — do not hard-fail discovery on a missing tool.
+
+**Sub-step 1c — Graph-structured context load (FIN-006):**
+
+Before Phase 1 opens, run graph queries to surface structural relationships (`<required_reading>` includes, back-references, header-anchor citations) that grep alone misses. This is the discovery-phase companion to `change.md`'s Step 2 graph triage.
+
+1. Derive 2–5 keywords from the project's `Target:` line (in `projects/{name}/STATE.md`) and the user's opening description. Prefer multi-word phrases and concrete nouns over generic terms.
+2. Dispatch `/wm:doc-graph search <keyword>` via Skill for each keyword. No direct `python -m wm_doc_graph` calls — dispatch routes through `doc-graph.md` per FIN-018c.
+3. For any concrete file paths named by the user in the opening description, dispatch `/wm:doc-graph refs <path> --in` via Skill to surface back-references.
+4. Summarize results in 5–15 lines: top hits per query, any unexpected cross-file relationships, structural anomalies worth flagging (empty `<required_reading>` blocks, inline citations without includes, dangling references). Note anything that looks like a pre-existing bug — same pattern that produced `verify.md`/`verify-plan.md`'s inline-without-include bug during this feature's own discovery.
+
+**Code-heavy project extension.** `/wm:doc-graph` indexes only `.md` files. If the current working directory is a code-heavy repo — detected via presence of any of `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `tsconfig.json`, `pom.xml`, `build.gradle`, `Gemfile`, `composer.json`, `mix.exs`, `Makefile`, `CMakeLists.txt` (the same detection list `code-graph.md` uses) — AND the `code-review-graph` MCP server is available (probe via `mcp__code-review-graph__*` tool visibility), also dispatch equivalent `/wm:code-graph` queries in parallel. Same non-blocking posture: if the MCP is not registered, skip with a one-line note and continue with doc-graph only.
+
+If `/wm:doc-graph` is unavailable, print a one-line skip note and continue — matches Sub-step 1b's non-blocking fallback.
+
+**Sub-step 1d — Contract-file pre-load (FIN-007):**
+
+Follow [#Discovery Rules](rules/discovery-rules.md#discovery-rules) from rules/discovery-rules.md
+
+Before Phase 1 opens, pre-load the project's own contract files so Phase 2 option-generation does not invent alternatives for questions the project's contracts already answer. This is the companion to Rule 9 in `rules/discovery-rules.md` — the rule carries the *why*, this sub-step carries the *how*.
+
+1. **Default globs.** Collect markdown files matching `references/**/*.md`, `rules/**/*.md`, and `docs/**/*.md` from the project's cwd.
+2. **Project-specific override.** If cwd `AGENTS.md` has a `## Contract files` section listing explicit paths or globs, those **supplement** (not replace) the defaults.
+3. **Pre-load strategy.** Read each matched file's content into context before Phase 1 opens. Files ≤200 lines load in full; larger files load headers (`grep -n "^#" {file}`) plus the first 100 lines — enough to surface the shape and the first substantive content.
+4. **Non-blocking fallback.** If no contract files are detected, print "no contract files detected — proceeding with standard discovery" and continue. Matches Sub-step 1b / 1c fallback posture.
+
+Contract files outrank any option set the agent later generates. When Phase 2 would present alternatives, first check whether a loaded contract file already mandates the answer — if so, report what the contract says rather than presenting options.
 </step>
 
 <step name="Step 2 — Phase 1: Open conversation">
 Act as a **thinking partner**, not an interviewer.
 
-Follow the discovery rules from `rules/discovery-rules.md` throughout Phase 1 and Phase 2 — they are the authoritative source for how to present options, trade-offs, uncertainty, recommendations, plain-language explanations, and the explain-then-decide pattern.
+Follow [#Discovery Rules](rules/discovery-rules.md#discovery-rules) from rules/discovery-rules.md
 
 **How to conduct Phase 1:**
 - **One question at a time.** Ask one question per message. Wait for response before asking the next. This lets the user think and add context naturally.
@@ -83,6 +106,8 @@ Agent decides when all areas are sufficiently covered.
 </step>
 
 <step name="Step 4 — Write artifacts">
+Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+
 After discovery conversation, assess which artifacts would benefit this project:
 
 **Artifact guidance (not strict rules):**
@@ -92,8 +117,7 @@ After discovery conversation, assess which artifacts would benefit this project:
 - **Design doc** — Always write. Scale to complexity (few paragraphs for a fix, full design for a new skill).
 
 **How to propose:**
-For PRD and tech spec, state your recommendation with reasoning and ask for confirmation:
-"This tool has clear user-facing behavior and scope that needs bounding — I'd recommend writing a PRD. Want one? (Y/N)"
+For PRD and tech spec, name your recommendation with reasoning and ask the user to confirm or decline. Phrasing follows communication rules — keep it tight, do not impose a canned shape.
 
 If user confirms PRD:
 1. Read `~/.claude/skills/wm/references/prd-guidelines.md`

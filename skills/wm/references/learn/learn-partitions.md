@@ -28,7 +28,6 @@ Match all archetypes against the current cwd. If multiple archetypes match (e.g.
 **name:** wm (Workflow Manager itself)
 
 **match:**
-- cwd-prefix: `d:/Dev/Tools/Workflow-manager`
 - has-file: `skills/wm/VERSION`
 
 **partitions:**

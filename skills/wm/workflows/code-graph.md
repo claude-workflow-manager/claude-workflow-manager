@@ -15,7 +15,8 @@ repo type, no dispatcher, no shared backend (FIN-006).
 </purpose>
 
 <required_reading>
-(none — this workflow is a thin dispatcher)
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/execution-rules.md
 </required_reading>
 
 <process>
@@ -91,6 +92,8 @@ and STOP — do not dispatch.
 </step>
 
 <step name="Step 4 — Dispatch and relay">
+Follow [#Execution Rules](rules/execution-rules.md#execution-rules) from rules/execution-rules.md
+
 Call the selected `mcp__code-review-graph__*` tool with the user's
 remaining arguments mapped to the tool's expected parameters. Relay
 the tool's output back to chat unchanged — do not summarize or reword.

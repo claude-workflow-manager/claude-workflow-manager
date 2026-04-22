@@ -3,6 +3,8 @@ Advance the active project to the next workflow stage, enforcing gates. Tier-awa
 </purpose>
 
 <required_reading>
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/editing-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/state-machine.md
 <!-- plugin-root-fallback -->
@@ -30,29 +32,27 @@ Identify the next state from the current one based on the project's tier.
 </step>
 
 <step name="Step 3 — Check gates">
+Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
+
 Read `~/.claude/skills/wm/references/gate-matrix.md`.
 
 Look up all gates for this transition and tier. For each gate:
 
-- **Hard** gate not met → STOP. Print what's missing and the fix action. Do not advance.
-- **Soft** gate not met → Present labeled options:
-  ```
-  Gate '{gate}' not met.
-  A) Do it now — {specific action}  ← recommended
-  B) Skip — proceed without it
-  ```
-  `ok` or `A` → do the action, then continue. `B` → skip and continue.
+- **Hard** gate not met → STOP. Tell the user which gate is missing and the specific fix action. Do not advance.
+- **Soft** gate not met → ask the user whether to do the specific fix action now (recommended) or skip and proceed without it. On approval, do the action and continue; on skip, continue without it. Presentation follows communication rules.
 - **Skip** → auto-pass, no prompt.
 
-If any Hard gate blocks, print all blocking gates at once so the user can fix them all.
+If any Hard gate blocks, surface all blocking gates at once so the user can fix them all.
 </step>
 
 <step name="Step 4 — Update STATE.md">
+Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+
 Update the `Current state:` line in `projects/{name}/STATE.md` to the new state.
 </step>
 
 <step name="Step 5 — Auto-route to next workflow">
-Announce: "Advanced to `{new-state}`. Routing to next workflow..."
+Announce the state advance and that the workflow is routing to the next command. Presentation follows communication rules.
 
 Then **automatically invoke** the appropriate WM workflow command — do not stop and ask the user to run it manually:
 

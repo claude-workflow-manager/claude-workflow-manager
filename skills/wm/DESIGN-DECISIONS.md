@@ -1,5 +1,37 @@
 # WM Design Decisions
 
+## v1.2.0 — Workflow/Rules Authority Boundary (2026-04-21)
+
+Project: `2026-04-21-workflow-rules-boundary`
+
+### FIN-001: Workflow files prescribe presentation templates that conflict with communication-rules.md
+Decision: Separate process authority (workflows) from presentation authority (communication rules). When they overlap today, workflows win by default, silently weakening the global rules.
+Rationale: Diagnosis seeded by `/wm:learn` after the 2026-04-21 ux-designer session. The upstream cause of rule-compliance drift was workflow text procedurally commanding the violation, not rule-text weakness.
+
+### FIN-002: Authority boundary — workflows list semantic options, agent picks presentation
+Decision: Workflow files list *what* the legitimate options are for a decision. Workflow files do NOT prescribe *how* those options are presented — no letter labels, no fixed layout, no question shape. The agent chooses presentation per communication rules.
+Rationale: The old letter-labeled blocks did two jobs — (a) guarantee option coverage, (b) dictate layout. Job (a) is valuable; job (b) is the authority-overlap offense. Separating them keeps (a) in workflows and releases (b) to rules + agent judgment.
+
+### FIN-003: Scope — all workflow-to-user chat communication
+Decision: This project covers every chat-output presentation prescription that appears in workflow files, not only letter-labeled option blocks. In scope: letter-labeled option lists, fixed status-summary layouts, fixed recommendation templates, prescribed proposal templates, canned Y-confirmation phrasings.
+Rationale: Splitting the fix into two rounds creates a second grep/edit/release cycle for a problem with one root cause.
+
+### FIN-004: Artifact-contract exemption — workflow layout prescriptions for project files stand
+Decision: The authority boundary applies only to chat output. Workflows MAY prescribe layout for content written to project files (STATE.md, DECISIONS.md, handoff.md, plan files, ACTIVE.md, CHANGELOG.md, VERSION) — these are artifacts with parse contracts.
+Rationale: Chat output is ephemeral and consumed by a human in the moment; artifact files are persistent and re-read by later workflow steps. Layout there is a contract, not a presentation choice.
+
+### FIN-005: Rule 3 — strip baked-in format template, keep semantic principle
+Decision: Rule 3 in `rules/communication-rules.md` no longer contains the literal `"Recommend X. Reason: Y. Trade-off: Z."` template. The principle (explicit recommendation, stated reason, stated trade-off, no hiding) is preserved.
+Rationale: The baked-in example was the in-rule version of the same offense diagnosed in workflows — it prescribed format where it should describe principle.
+
+### FIN-006: Authority meta-rule — add Rule 12 scoped to chat output
+Decision: New rule 12 in `rules/communication-rules.md`: "Rules outrank workflow prescriptions for chat output." Scope: chat messages to the user. Artifact files with parse contracts are explicitly exempt. Preamble extended to scope workflow files alongside AGENTS.md as subordinate to these rules.
+Rationale: Without a rule that names the boundary, the fix has no anchor for future workflow authors. A dedicated rule makes the boundary load-bearing and discoverable.
+
+### FIN-007: Migration mechanic — strip in place, no shared reference extraction
+Decision: Per-file edit pass that replaces each chat-output presentation prescription with a semantic directive. No new `references/presentation-patterns.md` file. Directives reference `rules/communication-rules.md` by pointer.
+Rationale: Most presentation prescriptions were file-specific; no reused pattern justified extraction. A shared reference would have introduced a new dependency and a new authority overlap to solve a duplication problem that did not exist.
+
 ## v2.0 — Agent Reasoning Quality + Token Optimization (2026-04-11)
 
 Project: `2026-04-10-agent-reasoning-quality`

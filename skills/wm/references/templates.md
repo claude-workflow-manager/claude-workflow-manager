@@ -44,7 +44,7 @@ Status: pending
 ### FIN-001: Archive previous version before making changes
 Decision: Archive the current version before any modifications.
 Rationale: Enables clean rollback and comparison.
-Implementation: Copy `{target}/` to `{target}/archive/{target}-v{current}/` and commit.
+Implementation: Copy `{target}/` to `docs/archive/{target}-v{current}/` and commit.
 Done-when: Archive folder exists and is committed to git.
 Status: pending
 ```

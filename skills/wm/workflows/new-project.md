@@ -3,6 +3,9 @@ Create a new workflow project with full state tracking scaffold.
 </purpose>
 
 <required_reading>
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/discovery-rules.md
+@~/.claude/rules/editing-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/templates.md
 <!-- plugin-root-fallback -->
@@ -17,6 +20,8 @@ Wait for response.
 </step>
 
 <step name="Step 2 — Determine work type">
+Follow [#Discovery Rules](rules/discovery-rules.md#discovery-rules) from rules/discovery-rules.md
+
 Based on the user's description, propose a work type:
 
 - **next-version** — Feature or enhancement to an existing skill/agent
@@ -29,24 +34,9 @@ Based on the user's description, propose a work type:
 
 **Context-adaptive presentation:**
 
-If the work type is obvious from the user's description → propose directly:
-```
-Work type: **{type}** — {description}. OK? (or pick different: A-next-version / B-fix / C-skill / D-new-agent / E-new / F-test / G-app)
-```
+The seven valid work types are: `next-version` (enhancement to existing work), `fix` (bug fix or small correction), `skill` (new skill or major rewrite — see `skills/wm/references/skill-building-guidelines.md` during discovery/planning), `new-agent` (creating a new agent from scratch), `new` (something else — tool, plugin, utility), `test` (testing, validation, experimentation), and `app` (application or major feature — produces PRD + tech spec).
 
-If ambiguous or no clear match → show full list:
-```
-Work type options:
-A) next-version — enhancement to existing work
-B) fix — bug fix or small correction
-C) skill — new skill or major rewrite (Reference material: `skills/wm/references/skill-building-guidelines.md` — read during discovery and planning for structural decisions.)
-D) new-agent — creating a new agent from scratch
-E) new — something else (tool, plugin, utility)
-F) test — testing, validation, experimentation
-G) app — application or major feature (PRD + tech spec)
-
-I suggest: {letter}) {type}. Confirm? (A/B/C/D/E/F/G)
-```
+If the work type is obvious from the user's description, propose the inferred type directly and ask the user to confirm or pick a different one. If ambiguous, describe each type briefly (one-line hint per type is enough) and ask the user which fits. Presentation follows communication rules — do not impose a letter-labeled template.
 
 Wait for confirmation.
 
@@ -63,9 +53,7 @@ Generate a folder name that describes **what you're doing in this cycle**. Don't
 Format: `{YYYY-MM-DD}-{slug}`
 Examples: `2026-03-31-initial-build`, `2026-03-31-api-integration`, `2026-03-20-gate-fix`
 
-Present: "Project folder: `{name}`. OK? (Y or suggest alternative)"
-
-Wait for confirmation.
+Propose the folder name and ask the user to confirm or suggest an alternative. Wait for confirmation.
 </step>
 
 <step name="Step 4 — Detect projects/ location">
@@ -81,6 +69,8 @@ git init && git commit --allow-empty -m "chore: initialize repository"
 </step>
 
 <step name="Step 5 — Create scaffold">
+Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+
 Read templates from `~/.claude/skills/wm/references/templates.md` and create:
 
 1. `projects/{name}/STATE.md` — from STATE.md template, fill in work type and date

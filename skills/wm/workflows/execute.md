@@ -5,6 +5,7 @@ Enter or resume execution of the plan for the active project. Native execution e
 <required_reading>
 @~/.claude/rules/execution-rules.md
 @~/.claude/rules/editing-rules.md
+@~/.claude/rules/communication-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/gate-matrix.md
 <!-- plugin-root-fallback -->
@@ -42,15 +43,7 @@ Run `git log --oneline -10` to verify recent commits.
 
 Run `git status` to check for uncommitted changes.
 
-Present resume summary:
-```
-Resuming execution for: {project-name}
-Scope: {describe complexity naturally — e.g. "small fix", "checklist with 8 steps", "detailed plan, 3 waves"}
-Last session: {summary from handoff}
-Progress: Step {N} of {M}
-Uncommitted changes: {yes/no}
-Next: {next action from handoff}
-```
+Present a resume summary: project name, scope described naturally (e.g. "small fix", "checklist with 8 steps", "detailed plan, 3 waves"), last session summary from the handoff, progress (step N of M), whether uncommitted changes are present, and the next action from the handoff. Presentation follows communication rules.
 
 Proceed to Step 4 (T1) or Step 5 (T2), starting from the first uncompleted step.
 </step>
@@ -111,7 +104,7 @@ If `/wm:doc-graph` is unavailable (tool not deployed / not a markdown-heavy repo
 6. Mark completed steps in plan, commit results
 7. If any subagent fails: apply deviation rules (Step 6) for that step
 
-Follow the execution rules from `rules/execution-rules.md` for delegation and model routing — especially rule #4 (when to delegate vs. keep in the main thread) and rule #5 (Haiku/Sonnet/Opus routing with the `model:` per-step override). Those are the authoritative source.
+Follow [#Execution Rules](rules/execution-rules.md#execution-rules) from rules/execution-rules.md
 
 **Structured return schema** — all subagents must return:
 ```
@@ -140,6 +133,8 @@ After all waves complete: run final checkpoint (Step 7), then proceed to Step 8.
 </step>
 
 <step name="Step 6 — Deviation rules">
+Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
+
 When execution encounters something unexpected:
 
 **Rule 1 — Trivial fix** (typo, missing import, lint error, formatting):
@@ -157,24 +152,14 @@ When execution encounters something unexpected:
 **Rule 3 — Architecture drift** (step would change approach, requires new files not in plan, scope expanding beyond plan):
 - Stop execution
 - Show: "Architecture drift detected: {what changed and why}"
-- Present options:
-  ```
-  A) Amend plan — {describe amendment} and continue
-  B) Revert to last checkpoint — re-plan from there
-  C) Proceed with deviation — log and continue (risk: plan no longer matches implementation)
-  ```
-- Wait for user choice
+- Ask the user to pick one of three alternatives: amend the plan (and continue with the amendment), revert to the last checkpoint (and re-plan from there), or proceed with the deviation logged (risk: plan no longer matches implementation). Presentation follows communication rules.
+- Wait for user choice.
 
 **Hard rule:** Every deviation is logged in handoff.md under "Deviations" section, regardless of severity. No silent deviations.
 
 **Circuit breakers:**
-- Same test fails 3 consecutive times → pause and escalate: "Test failing repeatedly. Options: A) Debug, B) Skip step, C) Abort execution"
-- Execution scope exceeds plan by >50% (files or steps) → checkpoint and ask:
-  ```
-  Execution expanding beyond plan (>{50%} more files/steps than planned).
-  A) Continue with current approach  ← recommended if progress is solid
-  B) Pause and re-plan from here
-  ```
+- Same test fails 3 consecutive times → pause and escalate. Tell the user the test is failing repeatedly and ask whether to debug, skip the step, or abort execution. Presentation follows communication rules.
+- Execution scope exceeds plan by >50% (files or steps) → checkpoint and ask the user whether to continue with the current approach (recommended if progress is solid) or pause and re-plan from here. Presentation follows communication rules.
 </step>
 
 <step name="Step 7 — Checkpoint protocol">
@@ -199,7 +184,7 @@ After all steps are done:
 2. Run final checkpoint (Step 7)
 3. Update `projects/{name}/STATE.md`:
    - Update `Last session` with date and summary of what was done
-4. Announce: "Execution complete. Run `/wm:verify` to verify implementation, or `/wm:save` to resume later."
+4. Announce that execution is complete and name the next legitimate actions (verify the implementation with `/wm:verify`, or save progress with `/wm:save`). Presentation follows communication rules.
 
 Do NOT auto-advance to verification.
 </step>

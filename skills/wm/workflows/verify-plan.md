@@ -6,6 +6,8 @@ Run a plan verification report before execution. T2 only — T1 skips this step.
 @~/.claude/rules/review-rules.md
 @~/.claude/rules/editing-rules.md
 @~/.claude/rules/execution-rules.md
+@~/.claude/rules/discovery-rules.md
+@~/.claude/rules/communication-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/gate-matrix.md
 <!-- plugin-root-fallback -->
@@ -26,6 +28,8 @@ If none: "No plan file found. Run `/wm:plan` first." STOP.
 </step>
 
 <step name="Step 3 — Run verification checks (FIN-010a — reviewer subagent)">
+Follow [#Review Rules](rules/review-rules.md#review-rules) from rules/review-rules.md
+
 <!-- plugin-root-fallback -->
 **Reviewer subagent dispatch (FIN-010a):** Read `@~/.claude/skills/wm/references/reviewer-config.md` for the default reviewer model. Dispatch a Sonnet reviewer subagent to run the eight checks below. Input contract: artifacts only — the plan file, DECISIONS.md, the design doc (if present), the investigation file from FIN-003 (`projects/{name}/plans/{date}-{topic}-investigation.md`), and `/wm:doc-graph` query results invoked from within the subagent. **No primary-agent narrative in the subagent's input** — the reviewer must derive verdicts from the artifacts alone to break inter-agent sycophancy.
 
@@ -100,7 +104,7 @@ If no issues: skip to Step 6.
 
 **Why it matters:** {Consequences if ignored — what breaks, what gets harder, what gets skipped}
 
-**Options:** Present the options that analysis actually supports — one, two, or more. Follow `rules/discovery-rules.md` rule #1: no padding, every option must earn its place, a single-option answer is valid when only one path is defensible. Slot C-style "accept/defer" filler is forbidden.
+**Options:** Present the options that analysis actually supports — one, two, or more. Follow [#Discovery Rules](rules/discovery-rules.md#discovery-rules) from rules/discovery-rules.md
 
 **Recommendation:** {letter or "only option"} — {one-sentence reasoning}
 ```
@@ -129,25 +133,15 @@ Apply these fixes? (ok to confirm, or specify overrides like "Issue 1: C instead
 </step>
 
 <step name="Step 7 — Present final options">
-If **no issues were found** (all checks passed):
-```
-Plan verified. Proceed to execution? (Y/N)
-```
-- "Y" / "ok" → advance to plan-verified
-- "N" → stay in planned
+If **no issues were found** (all checks passed): ask the user whether to proceed to execution. Approval advances the project to `plan-verified`; decline stays in `planned`.
 
-If **issues were resolved** in Steps 5-6:
-```
-A) Proceed — advance to plan-verified
-B) Re-verify after fixes
-C) Back to planning (/wm:plan)
-```
+If **issues were resolved** in Steps 5-6: ask the user to pick one of — proceed to `plan-verified`, re-verify after the fixes landed, or go back to planning (`/wm:plan`). Wait for user choice.
 
-Wait for user choice.
+Presentation follows communication rules — do not impose a canned shape.
 </step>
 
 <step name="Step 8 — Update state and auto-route to execution">
-If user chooses to proceed (Y or A):
+If the user approves proceeding:
 1. Update `projects/{name}/STATE.md`: `Current state: plan-verified`
 2. **Silent scratch cleanup:** delete any scratch files this verify-plan run created (impact scan at `scratch/{date}-{topic}-impact.md`). The report already contains the summary — the scratch file was full-detail backup that has served its purpose. Do not prompt the user; just delete.
 3. Immediately route to execution — invoke the execute workflow.

@@ -3,6 +3,7 @@ Development workflow orchestrator — entry point for resuming work. Loads proje
 </purpose>
 
 <required_reading>
+@~/.claude/rules/communication-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/session-rename.md
 <!-- plugin-root-fallback -->
@@ -26,36 +27,15 @@ If not `has_projects`: skip (projects list is empty).
 </step>
 
 <step name="Step 3 — Select project">
-Build selection list from active projects + scratch:
+Build a selection list from active projects + scratch:
 
 - **Projects only, one project** → auto-select it.
 - **Scratch only** → auto-select scratch.
-- **Multiple options** → show unified list:
-  ```
-  Active projects:
-  1) project-alpha — next-version — executing
-  2) project-beta — fix — backlog
-
-  ---
-  S) (scratch) — last general session — {date from handoff}
-
-  N) Start a new project (/wm:new-project)
-  ```
-  Wait for user to choose.
+- **Multiple options** → present each active project (name, work type, current state), the scratch session (with date from its handoff) if one exists, and the option to start a new project (`/wm:new-project`). Ask the user which to resume. Presentation follows communication rules.
 </step>
 
 <step name="Step 4 — Load context (progressive disclosure)">
-**If scratch selected:** Read `scratch/handoff.md`. Present its content as the resume summary. No state-machine routing — let user decide next step:
-  ```
-  Scratch session from {date}:
-  {handoff content}
-
-  What would you like to do?
-  A) Continue where you left off
-  B) Start a new project (/wm:new-project)
-  X) Something else
-  ```
-  Wait for user choice. STOP (no routing to Steps 5-8).
+**If scratch selected:** Read `scratch/handoff.md`. Present its content as the resume summary. No state-machine routing — ask the user what to do next (continue the scratch session, start a new project via `/wm:new-project`, or redirect to something else). Wait for user choice. STOP (no routing to Steps 5-8). Presentation follows communication rules.
 
 **If project selected:** Load only what the next action needs — not everything.
 
@@ -81,31 +61,19 @@ Read `~/.claude/skills/wm/references/session-rename.md` and run the bash snippet
 </step>
 
 <step name="Step 6 — Present resume summary">
-Print a concise summary:
-```
-Project: {name}
-Work type: {work-type}
-State: {current-state}
-Last session: {last session line from STATE.md}
-Handoff: {next action from handoff.md}
-```
+Summarize the relevant project state before asking anything else: the project name, work type, current state, last session line from STATE.md, and the next action from handoff.md. Keep it compact; presentation follows communication rules.
 </step>
 
 <step name="Step 7 — Recommend next action">
-**Check handoff first:** If the handoff has a concrete "Next action" with actionable steps (commands, files, success criteria), offer continuing from the handoff as the primary option.
+Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
 
-**If handoff is actionable:**
-```
-A) Continue from handoff — {next action summary} (recommended)
-B) {state-based command} — follow workflow
-C) /wm:skip — skip current stage
-X) Something else — tell me
-```
+**Check handoff first:** If the handoff has a concrete "Next action" with actionable steps (commands, files, success criteria), continuing from the handoff is the primary option. Otherwise fall back to the state-based recommendation.
 
-If user picks A: skip the state machine, go straight to executing the handoff steps. No state update needed — the user is just continuing their work.
+**If handoff is actionable:** recommend continuing from the handoff. The legitimate alternatives are: run the state-based command for the current state (see the table below), skip the current stage (`/wm:skip`), or redirect to something else the user has in mind. Ask the user to pick. If they pick to continue from handoff, skip the state machine and execute the handoff steps directly — no state update needed.
 
-**If handoff is not actionable** (vague, missing, or just says "start discovery"):
-Fall back to state-based recommendation:
+**If handoff is not actionable** (vague, missing, or just says "start discovery"): fall back to the state-based recommendation. The legitimate alternatives are: see full status first (`/wm:status`), skip the current stage (`/wm:skip`), or redirect.
+
+State-based recommendation table:
 
 | State | Recommendation |
 |---|---|
@@ -116,14 +84,7 @@ Fall back to state-based recommendation:
 | `executing` | "Run `/wm:execute` to resume execution" |
 | `awaiting-release` | "Run `/wm:release` to complete the release" |
 
-```
-A) {recommended command} (recommended)
-B) /wm:status — see full status
-C) /wm:skip — skip current stage
-X) Something else — tell me
-```
-
-Wait for user confirmation.
+Presentation follows communication rules — name your recommendation, state the reason, and pick a shape that fits the context. Wait for user confirmation.
 </step>
 
 <step name="Step 8 — Route to WM workflow">

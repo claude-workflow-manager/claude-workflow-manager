@@ -5,6 +5,7 @@ Enter the planning stage for the active project. Classifies tier, enforces gates
 <required_reading>
 @~/.claude/rules/execution-rules.md
 @~/.claude/rules/editing-rules.md
+@~/.claude/rules/communication-rules.md
 <!-- plugin-root-fallback -->
 @~/.claude/skills/wm/references/gate-matrix.md
 <!-- plugin-root-fallback -->
@@ -48,6 +49,8 @@ If upgraded from default, explain what triggered it (e.g. many files, cross-modu
 </step>
 
 <step name="Step 4 — Archive gate (FIN-017 — agent context only)">
+Follow [#Global Communication Rules](rules/communication-rules.md#global-communication-rules) from rules/communication-rules.md
+
 Read `~/.claude/skills/wm/references/gate-matrix.md`.
 
 **Trigger:** the archive gate fires when `cwd/agent.md` exists — that file marks a Markdown-Agents agent directory, the only context where archive semantics apply. For every other cwd (WM dev repo, plain codebase, mixed repo, etc.), skip this gate silently — the gate does nothing even if the project's work type is `next-version` or `skill`.
@@ -56,15 +59,10 @@ If `cwd/agent.md` does NOT exist → skip Step 4 entirely and continue to Step 5
 
 If `cwd/agent.md` exists:
 1. Read DECISIONS.md header for target skill/agent name and current version
-2. Check for archive folder: `{target}/archive/{target}-v{version}/`
+2. Check for archive folder: `docs/archive/{target}-v{version}/`
 3. Check git log for archive commit
 
-If not met (Soft gate):
-```
-Archive gate not met.
-A) Do it now — copy `{target}/` to `{target}/archive/{target}-v{current}/` and commit  ← recommended
-B) Skip — proceed without archiving
-```
+If not met (soft gate): ask the user whether to archive now (recommended — gives clean rollback and comparison against the new version) or skip archiving for this cycle. If the user approves archiving, copy `{target}/` to `docs/archive/{target}-v{current}/` and commit. Presentation follows communication rules.
 </step>
 
 <step name="Step 5 — Version source + target (FIN-009a — read-only, no writes)">
@@ -88,14 +86,7 @@ Look for known version files in the target directory, in order:
 Version source: {path to version file}
 ```
 
-**5c. If not found:** Ask the user:
-```
-No version tracking detected in {target}/. Options:
-A) Create a VERSION file (recommended for skills/commands)
-B) Point me to a file that contains the version
-C) Skip versioning for this project
-```
-Wait for user choice. If A or B, record the source. **If the user picks A, create the VERSION file as part of discovery scaffolding — not as a version write.** The initial file contents come from the current reality (e.g., `1.0` for a new skill), not from any release target.
+**5c. If not found:** Ask the user to choose one of: create a VERSION file (recommended for skills and commands), point at an existing file that holds the version, or skip versioning for this project. Wait for their choice. If they choose to create or point at a file, record the source. **If they choose to create a VERSION file, create it as part of discovery scaffolding — not as a version write.** The initial file contents come from the current reality (e.g., `1.0` for a new skill), not from any release target. Presentation follows communication rules.
 
 **5d. Propose target version (record only):**
 Based on scope of DECISIONS.md entries, propose major/minor/patch. Wait for confirmation. Update **only** `Target version:` in DECISIONS.md header. The target value sits there until release reads it and writes the final version to the source file.
@@ -104,6 +95,8 @@ Based on scope of DECISIONS.md entries, propose major/minor/patch. Wait for conf
 </step>
 
 <step name="Step 6 — Generate plan">
+Follow [#Editing Rules](rules/editing-rules.md#editing-rules) from rules/editing-rules.md
+
 Read `~/.claude/skills/wm/references/templates.md` for plan templates.
 
 **6a. Investigation artifact (FIN-003 — write before writing the plan):**

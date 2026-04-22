@@ -36,6 +36,9 @@ paths = [
     '''scratch/.*''',
     '''archive/.*''',
     '''\.git/.*''',
+    '''\.claude/.*''',
     '''memory/.*''',
     '''skills/wm/archive/.*''',
+    '''scripts/sanitize\.sh''',
+    '''skills/wm/CHANGELOG\.md''',
 ]

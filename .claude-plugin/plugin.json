@@ -1,6 +1,6 @@
 {
   "name": "workflow-manager",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Structured workflow manager for Claude Code — discovery, planning, execution, and release with explicit state and gates.",
   "license": "MIT",
   "author": {

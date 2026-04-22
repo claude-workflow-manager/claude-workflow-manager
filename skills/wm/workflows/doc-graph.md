@@ -12,13 +12,14 @@ handling, and output formatting live in one place.
 </purpose>
 
 <required_reading>
-(none — this workflow is a thin dispatcher and has no cross-file dependencies)
+@~/.claude/rules/communication-rules.md
+@~/.claude/rules/execution-rules.md
 </required_reading>
 
 <process>
 
 <step name="Step 1 — Parse verb + arguments">
-The user invokes `/wm:doc-graph <verb> [args...]`. Seven verbs are supported:
+The user invokes `/wm:doc-graph <verb> [args...]`. Eight verbs are supported:
 
 | Verb | Usage | Purpose |
 |---|---|---|
@@ -29,8 +30,11 @@ The user invokes `/wm:doc-graph <verb> [args...]`. Seven verbs are supported:
 | `impact` | `impact <files...> [--mode=light\|deep]` | Four-dimensional impact scan |
 | `check` | `check` | Repo-wide broken-reference scan (exits non-zero on failure — gate semantics) |
 | `search` | `search <query>` | Keyword search across headers / paths / signals |
+| `check-rule-reminders` | `check-rule-reminders` | Staleness check: flags workflow files older than the rule files they cite |
 
 If the user invokes `/wm:doc-graph` with no verb, print the verb table above and STOP — do not dispatch.
+
+**Native vs Python verbs.** The first seven verbs dispatch to the Python `wm_doc_graph` module (Step 3). `check-rule-reminders` is a bash-native check — it runs a rule-reminder-staleness scan without the Python package, since the check is purely file-time comparison. It dispatches via Step 5 instead of Step 3.
 </step>
 
 <step name="Step 2 — Resolve the tool path">
@@ -44,6 +48,8 @@ exists, print a clear error pointing the user at `/wm:release` and STOP.
 </step>
 
 <step name="Step 3 — Dispatch to the Python tool">
+Follow [#Execution Rules](rules/execution-rules.md#execution-rules) from rules/execution-rules.md
+
 Run the Python module via Bash, passing the user's arguments through
 verbatim (do not rewrite, re-order, or trim them — the Python CLI has
 its own argparse):
@@ -86,6 +92,76 @@ Exit codes are meaningful:
 - `0` — success (or `check` clean)
 - `1` — `check` found broken references (hard gate)
 - `2` — path outside cwd (FIN-008), missing tool, or argument error
+</step>
+
+<step name="Step 5 — Dispatch: `check-rule-reminders` (bash-native)">
+Runs only when the verb is `check-rule-reminders`. Does not invoke the Python module — pure bash + git.
+
+**What it does.** Parses every canonical-form rule reminder in `skills/wm/workflows/*.md` and flags any workflow file whose last-modified time is older than the rule file it cites.
+
+**Behavior — warn-only in v1.1.0, flips to hard-block after one validation cycle.** Per FIN-003's staged-rollout pattern (same shape as FIN-018 hook deployment): the first release ships this as a warning. Staleness reports appear in release output but do not block. After one release cycle with no false-positive noise, flip this check to exit non-zero on staleness to promote to a hard release gate.
+
+```bash
+# check-rule-reminders — bash-native staleness scan
+#
+# Scans skills/wm/workflows/*.md for the FIN-002 canonical form:
+#   Follow [#<H1>](rules/<file>.md#<slug>) from rules/<file>.md
+# For each match, compares the workflow file's commit time to the
+# cited rule file's commit time via `git log --format=%ct -1 -- <path>`
+# (git time preferred over filesystem mtime for portability).
+# Emits a 5–15 line report. Exit 0 always in v1.1.0 (warn-only).
+
+WORKFLOWS_DIR="skills/wm/workflows"
+STALE_COUNT=0
+TOTAL_REMINDERS=0
+
+# Find every canonical-form reminder. grep -oE extracts the full match;
+# we then parse each one to get the workflow file (via the containing
+# line context) and the rule file (from the link target).
+while IFS= read -r line; do
+  TOTAL_REMINDERS=$((TOTAL_REMINDERS + 1))
+  workflow_file="${line%%:*}"
+  # Extract the rule file path from the match: everything between
+  # "](" and "#" inside the canonical link.
+  rule_path=$(echo "$line" | grep -oE '\]\(rules/[^#)]+' | head -1 | sed 's|^](||')
+  [ -z "$rule_path" ] && continue
+
+  workflow_t=$(git log --format=%ct -1 -- "$workflow_file" 2>/dev/null)
+  rule_t=$(git log --format=%ct -1 -- "$rule_path" 2>/dev/null)
+
+  # Skip if either side has no git history (not yet committed, etc.)
+  [ -z "$workflow_t" ] || [ -z "$rule_t" ] && continue
+
+  if [ "$rule_t" -gt "$workflow_t" ]; then
+    STALE_COUNT=$((STALE_COUNT + 1))
+    echo "STALE: $workflow_file cites $rule_path — rule edited after workflow (workflow $(date -d @$workflow_t +%Y-%m-%d), rule $(date -d @$rule_t +%Y-%m-%d))"
+  fi
+done < <(grep -rnE 'Follow \[#[^]]+\]\(rules/[^)]+\) from rules/' "$WORKFLOWS_DIR")
+
+echo ""
+echo "Scanned $TOTAL_REMINDERS canonical-form reminders across $WORKFLOWS_DIR/*.md"
+if [ "$STALE_COUNT" -eq 0 ]; then
+  echo "Staleness check: clean. No rule file is newer than its citing workflow."
+else
+  echo "Staleness check: $STALE_COUNT stale reminder(s) found (warn-only in v1.1.0 — not a release blocker yet)."
+fi
+
+# Warn-only mode — always exit 0 in v1.1.0.
+exit 0
+```
+
+**Portability note.** `date -d @<epoch>` is GNU-style. On macOS / BSD, substitute `date -r <epoch> +%Y-%m-%d`. Detect via `uname -s` if cross-platform is needed.
+
+**Hard-block flip.** After one release cycle with no false positives, change the final `exit 0` to:
+
+```bash
+if [ "$STALE_COUNT" -gt 0 ]; then
+  exit 1   # promote to hard release gate
+fi
+exit 0
+```
+
+Document the flip in the CHANGELOG entry of the release that makes it.
 </step>
 
 </process>

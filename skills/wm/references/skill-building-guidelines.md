@@ -98,6 +98,10 @@ If it can't land cleanly, explain why.
 
 Give the agent what it needs to know, not a script to follow blindly. Reserve tight sequencing for cases where order genuinely matters (e.g., safety gates, destructive operations).
 
+## Cross-cutting conventions
+
+- Rule-reminder pattern: `references/rule-reminder-pattern.md` — how to cite rules in workflow files (required for all new workflows).
+
 ---
 
 ## Source
